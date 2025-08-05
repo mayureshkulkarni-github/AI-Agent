@@ -1,0 +1,11 @@
+Flask
+flask-cors
+python-dotenv
+jinja2
+bleach
+langchain
+langchain-google-genai
+google-generativeai
+uuid
+html5lib
+beautifulsoup4

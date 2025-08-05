@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Annapurna (Single File Preview)</title>
+
+    <!--
+      This is the key difference!
+      Instead of a <link> tag, we embed the CSS directly.
+      The 'safe' filter is CRITICAL here to ensure the CSS is
+      rendered as-is and not as escaped HTML text.
+    -->
+    <style>
+        body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+section {
+  padding: 2rem 0;
+}
+
+/* Hero Section Styling */
+#introduction-hero {
+  min-height: 400px;
+  background-image: url("https://t4.ftcdn.net/jpg/02/92/20/37/360_F_292203735_CSsyqyS6A4Z9Czd4Msf7qZEhoxjpzZl1.jpg");
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.hero-text {
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  color: white;
+}
+
+.hero-text h1 {
+  font-size: 3.5rem;
+  text-shadow: 2px 2px 4px black;
+}
+
+/* Standard Section Styling */
+h1, h2, h3 {
+  color: lightbrown;
+  margin-bottom: 1rem;
+}
+
+#introduction, #contact {
+  text-align: center;
+}
+
+/* Menu Section Styling */
+#menu {
+  padding: 2rem;
+}
+
+#menu h2 {
+  text-align: center;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  padding: 1rem;
+}
+
+.menu-item {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  background-color: #f9f9f9;
+}
+
+.menu-item img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.menu-item h3 {
+  margin-bottom: 0.5rem;
+}
+
+.menu-item p {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.menu-item .price {
+  font-weight: bold;
+  color: #333;
+  margin-top: 0.5rem;
+}
+
+/* Contact Section Styling */
+#contact-info {
+  margin-top: 1rem;
+}
+
+#contact-info p {
+  margin-bottom: 0.5rem;
+}
+
+/* Footer Styling (Optional) */
+footer {
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 1rem 0;
+  font-size: 0.8rem;
+}
+
+    </style>
+
+</head>
+<body>
+    <!-- The AI's generated HTML body is injected here -->
+    <!--
+      This is the most important part.
+      The AI's generated HTML for the page content is injected here.
+      The 'safe' filter tells Jinja2: "Do not escape the HTML tags in this
+      variable. Trust that it has already been sanitized and render it as raw HTML."
+      This is crucial for the generated components to appear correctly.
+    --><section id="introduction-hero" style=""><div class="hero-overlay"><div class="hero-text"><h1>Annapurna</h1><p>A Taste of Tradition</p></div></div></section>
+<section id="menu">
+  <h2>Menu</h2>
+  <div class="menu-grid">
+    
+    <div class="menu-item">
+      <img alt="Misal Pav" src="https://thumbs.dreamstime.com/b/marathi-snacks-misal-pav-misal-pav-buns-smeared-butter-served-spicy-sprouts-curry-trail-mixture-chopped-onions-219474589.jpg">
+      <h3>Misal Pav</h3>
+      <p class="description">Spicy and savory curry made with sprouted moth beans, topped with farsan and onions.</p>
+      <p class="price">100 rupees</p>
+    </div>
+    
+    <div class="menu-item">
+      <img alt="Puran Poli" src="https://www.jcookingodyssey.com/wp-content/uploads/2025/03/puran-poli.jpg">
+      <h3>Puran Poli</h3>
+      <p class="description">Sweet flatbread stuffed with a delicious filling of chana dal and jaggery.</p>
+      <p class="price">150 rupees</p>
+    </div>
+    
+    <div class="menu-item">
+      <img alt="Vada Pav" src="https://ministryofcurry.com/wp-content/uploads/2024/06/vada-pav-3.jpg">
+      <h3>Vada Pav</h3>
+      <p class="description">the mumbai's special vadapav with specialized green and red chutney</p>
+      <p class="price">30 rupees</p>
+    </div>
+    
+  </div>
+</section>
+<section id="contact">
+  <h2>Contact Us</h2>
+  <address>
+    Shivaji Chowk, Main Road, Latur, Maharashtra - 413512<br>
+    Phone: 9876543210<br>
+    Hours: 11:00 AM to 10:00 PM daily
+  </address>
+</section>
+</body>
+</html>

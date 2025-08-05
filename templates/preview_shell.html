@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} (Single File Preview)</title>
+
+    <!--
+      This is the key difference!
+      Instead of a <link> tag, we embed the CSS directly.
+      The 'safe' filter is CRITICAL here to ensure the CSS is
+      rendered as-is and not as escaped HTML text.
+    -->
+    <style>
+        {{ embedded_css | safe }}
+    </style>
+
+</head>
+<body>
+    <!-- The AI's generated HTML body is injected here -->
+    {{ generated_body_html | safe }}
+</body>
+</html>

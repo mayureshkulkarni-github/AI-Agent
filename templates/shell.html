@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- The title is safely filled in by Jinja2 -->
+    <title>{{ title }}</title>
+
+    <!-- The link to the CSS file is static and reliable -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- 
+      This is a placeholder for the dynamic, AI-generated styles.
+      It will be replaced with a <style> block containing the user's
+      chosen brand color. The 'safe' filter is not strictly needed here
+      if we control the CSS generation, but it's good practice.
+    -->
+    {{- dynamic_styles | safe -}}
+
+</head>
+<body>
+
+    <!--
+      This is the most important part.
+      The AI's generated HTML for the page content is injected here.
+      The 'safe' filter tells Jinja2: "Do not escape the HTML tags in this
+      variable. Trust that it has already been sanitized and render it as raw HTML."
+      This is crucial for the generated components to appear correctly.
+    -->
+    {{- generated_body_html | safe -}}
+
+</body>
+</html>

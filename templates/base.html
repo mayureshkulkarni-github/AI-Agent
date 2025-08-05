@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ data.details.name }} - {{ data.details.cuisine }}</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- This is a placeholder for our dynamic styles -->
+    {{- dynamic_styles -}}
+</head>
+<body>
+
+    {% include 'templates/components/header.html' %}
+
+    <main>
+        <!-- The AI will now control the order of these sections! -->
+        {% for section_name in design_prefs.section_order %}
+            {% if section_name == 'hero' %}
+                {% include 'templates/components/hero.html' %}
+            {% elif section_name == 'menu' %}
+                {% include 'templates/components/menu.html' %}
+            {% elif section_name == 'contact' %}
+                {% include 'templates/components/contact.html' %}
+            {% endif %}
+        {% endfor %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 {{ data.details.name }}. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

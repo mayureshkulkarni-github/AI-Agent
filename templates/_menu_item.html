@@ -1,0 +1,22 @@
+<div class="menu-item">
+    {% if item.image_url %}
+        <!--
+          The image tag is now here, inside our template.
+          We can give it a specific class for precise styling.
+          The style attribute enforces the size directly, acting as a failsafe.
+        -->
+        <img 
+            src="{{ item.image_url }}" 
+            alt="{{ item.name }}" 
+            class="menu-item-image"
+            style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px;"
+        >
+    {% endif %}
+    <div class="menu-item-details">
+        <h3>{{ item.name }}</h3>
+        <p class="price">{{ item.price }}</p>
+        {% if item.description %}
+            <p class="description">{{ item.description }}</p>
+        {% endif %}
+    </div>
+</div>

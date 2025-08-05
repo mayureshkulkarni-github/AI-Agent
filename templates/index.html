@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ data.details.name }} - {{ data.details.cuisine }}</title>
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <h1>{{ data.details.name }}</h1>
+            <p class="tagline">{{ data.details.tagline }}</p>
+        </div>
+    </header>
+
+    <main>
+        <section id="hero">
+            <div class="container">
+                <h2>Welcome</h2>
+                <p>Experience the finest {{ data.details.cuisine }} cuisine in town.</p>
+            </div>
+        </section>
+
+        <section id="menu">
+            <div class="container">
+                <h2>Our Menu</h2>
+                <div class="menu-grid">
+                    {% for item in data.menu %}
+                    <div class="menu-item">
+                        <h3>{{ item.name }}</h3>
+                        <p class="price">{{ item.price }}</p>
+                        <p class="description">{{ item.description }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section id="contact">
+            <div class="container">
+                <h2>Visit Us</h2>
+                <p><strong>Address:</strong> {{ data.contact.address }}</p>
+                <p><strong>Phone:</strong> <a href="tel:{{ data.contact.phone }}">{{ data.contact.phone }}</a></p>
+                <p><strong>Hours:</strong> {{ data.contact.hours }}</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 {{ data.details.name }}. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

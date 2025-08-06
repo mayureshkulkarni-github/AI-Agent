@@ -24,3 +24,16 @@ An intelligent assistant that helps you build beautiful, static restaurant websi
 - UI: Basic HTML + JS chat interface
 
 
+![Chat Interface](assets/127.0.0.1_5000_.png)
+![Website Preview](assets/_C__Users_Admin_OneDrive_Desktop_AI-agent_downloads__preview-in-one-file.html.png)
+
+
+## Author
+
+**Mayuresh Kulkarni** 
+ * Data Scientist
+ * B.Tech in Mechanical Engineering  
+ * Passionate about AI, Python, Flask Development, and Data Science  
+ * Email: kulkarnim522@gmail.com
+ * [LinkedIn](https://www.linkedin.com/in/mayuresh-kulkarni-41b17022a/)  
+ * [GitHub](https://github.com/mayureshkulkarni-github)

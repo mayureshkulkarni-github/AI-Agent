@@ -22,6 +22,7 @@ from langchain_google_genai import GoogleGenerativeAI
 from langchain.memory import ConversationBufferWindowMemory
 from pydantic.v1 import BaseModel, Field
 from typing import Literal, Optional, Dict
+from langchain_google_genai.llms import HarmBlockThreshold, HarmCategory
 
 
 load_dotenv()
@@ -52,8 +53,7 @@ def get_or_create_user_state() -> dict:
                     "section_order": ["introduction", "menu", "contact"],
                     "menu_layout": "grid",
                     "brand_color": None
-                },
-                "is_complete": False,
+                }
             },
             "memory": ConversationBufferWindowMemory(k=5, memory_key="chat_history", return_messages=True),
         }
@@ -85,12 +85,12 @@ def get_website_build_status(dummy_input: str | None = None) -> str:
 
 
 
-
 @tool
 def save_website_style(tool_input: str) -> str:
     """Saves the visual style for the website. The input must be one of ['modern', 'rustic', 'elegant']."""
     
-    cleaned_style = tool_input.strip().replace('"', '').lower()
+    style_str = tool_input.get("style", str(tool_input)) if isinstance(tool_input, dict) else str(tool_input)
+    cleaned_style = style_str.strip().replace('"', '').lower()
     
     actual_style = None
     if 'modern' in cleaned_style:
@@ -108,34 +108,35 @@ def save_website_style(tool_input: str) -> str:
     user_state["website_config"]["checklist"]["style"] = True
     return f"Style successfully saved as '{actual_style}'."
 
-
 @tool
-def add_menu_item(tool_input: str) -> str:
+def add_menu_item(tool_input: str | dict) -> str:
     """
     Adds a single item (dish) to the restaurant's menu.
-    The input MUST be a valid JSON string with "name", "price", and optional "description" and "image_url".
-    Example: '{"name": "Vada Pav", "price": "40 rupees", "image_url": "http://example.com/vada.jpg"}'
+    The input MUST be a valid JSON string or dictionary with "name", "price", and optional "description" and "image_url".
+    Example: '{"name": "Vada Pav", "price": "40 rupees"}'
     """
+    data = None
+    if isinstance(tool_input, dict):
+        data = tool_input
+    else:
+        try:
+            data = json.loads(tool_input)
+        except json.JSONDecodeError:
+            return json.dumps({
+                "status": "error", "type": "JSONDecodeError",
+                "message": "Invalid format for menu item. Please ensure it is a valid JSON."
+            })
+
     try:
-        data = json.loads(tool_input)
         name = data["name"]
         price = data["price"]
         description = data.get("description", "")
         image_url = data.get("image_url")
-    except json.JSONDecodeError:
-        error_info = {
-            "status": "error",
-            "type": "JSONDecodeError",
-            "message": "The input was not valid JSON. I need a well-formatted JSON string from you."
-        }
-        return json.dumps(error_info)
     except KeyError as e:
-        error_info = {
-            "status": "error",
-            "type": "MissingKeyError",
-            "message": f"I'm missing a required piece of information: {e}. I need a 'name' and a 'price'."
-        }
-        return json.dumps(error_info)
+        return json.dumps({
+            "status": "error", "type": "MissingKeyError",
+            "message": f"Missing required menu item field: {e}."
+        })
     
     user_state = get_or_create_user_state()
     
@@ -150,7 +151,11 @@ def add_menu_item(tool_input: str) -> str:
     }
     user_state["website_config"]["data"]["menu"].append(menu_item)
     
+    if not user_state["website_config"]["checklist"]["menu"]:
+        user_state["website_config"]["checklist"]["menu"] = True
+        
     return f"Added '{name}' to the menu. You can add another item, or say 'done with menu' when you are finished."
+
 
 @tool
 def finish_menu_section(dummy_input: str = "finish") -> str:
@@ -164,110 +169,77 @@ def finish_menu_section(dummy_input: str = "finish") -> str:
         return "Error: No items were added to the menu. Please add at least one item before finishing."
     
 @tool
-def save_restaurant_details(tool_input: str) -> str:
-    """
-Saves the restaurant's name, cuisine, tagline, and an optional introduction image.
-The input MUST be a valid JSON string with "name", "cuisine", and optional "tagline" and "introduction_image_url".
-Example: '{"name": "The Golden Spoon", "cuisine": "Italian", "introduction_image_url": "http://example.com/introduction.jpg"}'
-"""
+def save_restaurant_details(tool_input: str | dict) -> str:
+    """Saves the restaurant's name, cuisine, tagline, and an optional introduction image."""
+    data = None
+    if isinstance(tool_input, dict):
+        data = tool_input
+    else:
+        try:
+            data = json.loads(tool_input)
+        except json.JSONDecodeError:
+            return json.dumps({"status": "error", "type": "JSONDecodeError", "message": "Invalid format for restaurant details."})
+
     try:
-        data = json.loads(tool_input)
         name = data["name"]
         cuisine = data["cuisine"]
         tagline = data.get("tagline", "")
-        introduction_image_url = data.get("introduction_image_url")
-    except json.JSONDecodeError:
-        error_info = {
-            "status": "error",
-            "type": "JSONDecodeError",
-            "message": "The input was not valid JSON. I need a well-formatted JSON string from you."
-        }
-        return json.dumps(error_info)
+        introduction_image_url = data.get("introduction_image_url") or data.get("image_url") or data.get("intro_image_url")
     except KeyError as e:
-        error_info = {
-            "status": "error",
-            "type": "MissingKeyError",
-            "message": f"I'm missing a required piece of information: {e}. I need both a 'name' and a 'cuisine'."
-        }
-        return json.dumps(error_info)
+        return json.dumps({"status": "error", "type": "MissingKeyError", "message": f"Missing required detail: {e}."})
 
     user_state = get_or_create_user_state()
     user_state["website_config"]["data"]["details"].update({
-        "name": name,
-        "cuisine": cuisine,
-        "tagline": tagline,
-        "introduction_image_url": introduction_image_url
+        "name": name, "cuisine": cuisine, "tagline": tagline, "introduction_image_url": introduction_image_url
     })
     user_state["website_config"]["checklist"]["details"] = True
     return "Successfully saved restaurant details."
 
+
 @tool
-def save_contact_info(tool_input: str) -> str:
-    """
-    Saves contact information.
-    The input to this tool MUST be a valid JSON string with the keys "address", "phone", and "hours".
-    Example: '{"address": "123 Main St", "phone": "555-1234", "hours": "9-5 M-F"}'
-    """
+def save_contact_info(tool_input: str | dict) -> str:
+    """Saves contact information: address, phone, and hours."""
+    data = None
+    if isinstance(tool_input, dict):
+        data = tool_input
+    else:
+        try:
+            data = json.loads(tool_input)
+        except json.JSONDecodeError:
+            return json.dumps({"status": "error", "type": "JSONDecodeError", "message": "Invalid format for contact info."})
+
     try:
-        data = json.loads(tool_input)
         address = data["address"]
         phone = data["phone"]
         hours = data["hours"]
-    except json.JSONDecodeError:
-        error_info = {
-            "status": "error",
-            "type": "JSONDecodeError",
-            "message": "The input was not valid JSON. I need a well-formatted JSON string from you."
-        }
-        return json.dumps(error_info)
     except KeyError as e:
-        error_info = {
-            "status": "error",
-            "type": "MissingKeyError",
-            "message": f"I'm missing a required piece of information: {e}. I need an 'address', 'phone', and 'hours'."
-        }
-        return json.dumps(error_info)
+        return json.dumps({"status": "error", "type": "MissingKeyError", "message": f"Missing required contact info: {e}."})
 
     user_state = get_or_create_user_state()
     user_state["website_config"]["data"]["contact"].update({
-        "address": address,
-        "phone": phone,
-        "hours": hours
+        "address": address, "phone": phone, "hours": hours
     })
     user_state["website_config"]["checklist"]["contact"] = True
     return "Contact information successfully saved."
 
 
-
 @tool
-def update_existing_information(tool_input: str) -> str:
-    """
-    Use this to make specific, granular changes to information that has already been provided.
-    For single fields like 'style' or 'tagline', provide the section and the new data.
-    Example for style: '{"item_to_update": "style", "new_data": {"style": "rustic"}}'
-    Example for tagline: '{"item_to_update": "details", "new_data": {"tagline": "The best food in town."}}'
-    
-    For updating a specific menu item, provide the item's name to identify it.
-    Example for menu price: '{"item_to_update": "menu", "item_name": "Vada Pav", "new_data": {"price": "40 rupees"}}'
-    """
+def update_existing_information(tool_input: str | dict) -> str:
+    """Updates existing information for sections like 'details', 'menu', or 'style'."""
+    data = None
+    if isinstance(tool_input, dict):
+        data = tool_input
+    else:
+        try:
+            data = json.loads(tool_input)
+        except json.JSONDecodeError:
+            return json.dumps({"status": "error", "type": "JSONDecodeError", "message": "Invalid format for updating information."})
+
     try:
-        data = json.loads(tool_input)
         item_to_update = data["item_to_update"]
         new_data = data["new_data"]
-    except json.JSONDecodeError:
-        error_info = {
-            "status": "error",
-            "type": "JSONDecodeError",
-            "message": "The input was not valid JSON. I need a well-formatted JSON string from you."
-        }
-        return json.dumps(error_info)
     except KeyError as e:
-        error_info = {
-            "status": "error",
-            "type": "MissingKeyError",
-            "message": f"I'm missing a required piece of information: {e}. I need 'item_to_update' and 'new_data'."
-        }
-        return json.dumps(error_info)
+        return json.dumps({"status": "error", "type": "MissingKeyError", "message": f"Missing 'item_to_update' or 'new_data'."})
 
     user_state = get_or_create_user_state()
     config = user_state["website_config"]
@@ -279,7 +251,6 @@ def update_existing_information(tool_input: str) -> str:
         item_name_to_find = data.get("item_name")
         if not item_name_to_find:
             return "Error: To update the menu, you must provide the 'item_name' of the dish you want to change."
-
         menu_list = config['data']['menu']
         item_found = False
         for item in menu_list:
@@ -287,21 +258,12 @@ def update_existing_information(tool_input: str) -> str:
                 item.update(new_data)
                 item_found = True
                 break
-        
-        if item_found:
-            return f"Successfully updated '{item_name_to_find}' in the menu."
-        else:
+        if not item_found:
             return f"Error: Could not find a menu item named '{item_name_to_find}' to update."
-            
     elif isinstance(config['data'][item_to_update], dict):
         config['data'][item_to_update].update(new_data)
     elif item_to_update == 'style':
-        new_style = new_data.get('style')
-        if not new_style: return "Error: 'new_data' for style must contain a 'style' key."
-        if new_style in ['modern', 'rustic', 'elegant']:
-            config['data']['style'] = new_style
-        else:
-            return f"Error: Invalid style '{new_style}'."
+        pass
     
     return f"Successfully updated the '{item_to_update}' section."
 
@@ -331,8 +293,6 @@ def finish_and_generate_website(tool_input: str) -> str:
         return f"Error: The filename '{filename_base}' contains invalid characters. Please use only letters, numbers, and underscores."
 
     user_state = get_or_create_user_state()
-    if user_state["website_config"]["is_complete"]:
-        return "Website has already been generated."
 
     try:
         
@@ -356,7 +316,6 @@ def finish_and_generate_website(tool_input: str) -> str:
             zf.writestr("style.css", css_content)
             zf.writestr("_preview-in-one-file.html", single_file_html)
 
-        user_state["website_config"]["is_complete"] = True
         download_url = f"/downloads/{final_filename}"
         
         return (f"Website generation complete! "
@@ -395,36 +354,20 @@ def preview_website(dummy_input: str = "preview") -> str:
         return f"A critical error occurred during preview generation: {e}"   
 
 @tool
-def save_design_preferences(tool_input: str) -> str:
-    """
-    Saves the user's design preferences for the website layout.
-    The input MUST be a JSON string.
-    'section_order' must be a list of strings from ['introduction', 'menu', 'contact'].
-    'menu_layout' must be either 'grid' or 'list'.
-    'brand_color' can be a hex code like '#ff0000' or a color name.
-    Example: '{"section_order": ["contact", "menu", "introduction"], "menu_layout": "list", "brand_color": "#A52A2A"}'
-    """
-    try:
-        data = json.loads(tool_input)
-    except json.JSONDecodeError:
-        error_info = {
-            "status": "error",
-            "type": "JSONDecodeError",
-            "message": "The input was not valid JSON. I need a well-formatted JSON string from you."
-        }
-        return json.dumps(error_info)
-    except KeyError as e:
-        error_info = {
-            "status": "error",
-            "type": "MissingKeyError",
-            "message": f"I'm missing a required piece of information: {e}. The JSON must contain the keys for the preferences you wish to save."
-        }
-        return json.dumps(error_info)
+def save_design_preferences(tool_input: str | dict) -> str:
+    """Saves design preferences: section_order, menu_layout, brand_color."""
+    data = None
+    if isinstance(tool_input, dict):
+        data = tool_input
+    else:
+        try:
+            data = json.loads(tool_input)
+        except json.JSONDecodeError:
+            return json.dumps({"status": "error", "type": "JSONDecodeError", "message": "Invalid format for design preferences."})
 
     user_state = get_or_create_user_state()
     user_state["website_config"]["design_prefs"].update(data)
     user_state["website_config"]["checklist"]["design"] = True
-    
     return "Design preferences have been saved. I am now ready to generate a preview."
 
 
@@ -440,78 +383,103 @@ def _generate_website_files(user_state):
     }
     config_json = json.dumps(full_summary, indent=2)
 
-    code_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"), temperature=0.2)
+    code_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"), temperature=0.1, safety_settings={
+                                                                                                                                                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                                                                                                                                                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                                                                                                                                                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                                                                                                                                                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                                                                                                                                            },) 
 
+    
     html_writer_prompt = ChatPromptTemplate.from_messages([
-    ("system",
-     "You are an expert frontend developer. Your task is to write the HTML content for a restaurant website's <body> based on the provided JSON data. You must follow the user's `design.section_order`. Do NOT include any CSS, <style>, <html>, <head>, or <body> tags.\n\n"
-     "**CRITICAL INSTRUCTIONS FOR SECTIONS:**\n"
-     "1.  **Introduction Section:**\n"
-     "    - **IF `content.details.introduction_image_url` EXISTS:** You MUST create a special 'hero' section. The structure MUST be exactly: `<section id='introduction-hero' style=\"background-image: url('{{ content.details.introduction_image_url }}');\"><div class='hero-overlay'><div class='hero-text'><h1>{{ content.details.name }}</h1><p>{{ content.details.tagline }}</p></div></div></section>`.\n"
-     "    - **IF `content.details.introduction_image_url` is MISSING or NULL:** You MUST create a simple text section: `<section id='introduction'><h1>{{ content.details.name }}</h1><p>{{ content.details.tagline }}</p></section>`.\n"
-     "2.  **Menu & Contact Sections:** Generate the HTML for the `menu` and `contact` sections exactly as you have been instructed before, using the `menu-grid`/`menu-item` classes and the `<address>` tag."
-    ),
-    ("user", "Here is the website configuration data:\n\n{config_json}")
-])
-    
+        ("system",
+         "You are an expert frontend developer. Your task is to write the HTML for a restaurant website based on the provided JSON. You must follow the `design.section_order`.\n\n"
+         "**CRITICAL INSTRUCTIONS:**\n"
+         "1.  **DO NOT** include `<html>`, `<head>`, `<body>`, `<style>`, or ````html` tags. Output ONLY the raw HTML for the page content.\n"
+         "2.  **Introduction Section:**\n"
+         "    - Use the provided Jinja2-like syntax: `{{ content.details.name }}` to insert data.\n"
+         "    - **IF `content.details.introduction_image_url` EXISTS:** Create a hero section like this: `<section id='introduction-hero'><div class='hero-overlay'><div class='hero-text'><h1>{{ content.details.name }}</h1><p>{{ content.details.tagline }}</p></div></div></section>`.\n"
+         "    - **IF it is MISSING:** Create a simple section: `<section id='introduction'><h1>{{ content.details.name }}</h1><p>{{ content.details.tagline }}</p></section>`.\n"
+         "3.  **Menu Section:**\n"
+         "    - Create a section with `id='menu'`.\n"
+         "    - Use the class `menu-grid` or `menu-list` on a container `div` based on `design.menu_layout`.\n"
+         "    - Loop through `content.menu` items, creating a `div` with class `menu-item` for each.\n"
+         "    - For each item, include an `<img>` with the `src` set to `{{ item.image_url }}` and `alt` set to `{{ item.name }}`.\n"
+         "4.  **Contact Section:**\n"
+         "    - Create a section with `id='contact'` and use an `<address>` tag for the information."
+         ),
+        ("user", "Here is the website configuration data:\n\n{config_json}")
+    ])
+
+   
     css_writer_prompt = ChatPromptTemplate.from_messages([
-    ("system", 
-     "You are an expert CSS designer. Your task is to write a complete, professional, and visually appealing CSS stylesheet based on the provided JSON data.\n\n"
-     "**CRITICAL STYLING INSTRUCTIONS:**\n"
-     "1.  **Hero Section Styling (for `#introduction-hero`):**\n"
-     "    - This section MUST be a banner: `min-height: 400px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; position: relative;`.\n"
-     "    - The `.hero-overlay` class MUST cover the entire section and have a semi-transparent dark background: `position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5);`.\n"
-     "    - The `.hero-text` class MUST be centered (`text-align: center;`), positioned above the overlay (`position: relative; z-index: 2;`), and have **white text** (`color: white;`).\n"
-     "    - The `h1` inside `.hero-text` MUST have a large, impactful font size (e.g., `font-size: 3.5rem;`) and a text-shadow for readability (`text-shadow: 2px 2px 4px black;`).\n"
-     "2.  **Standard Section Styling (for `#introduction`, `#menu`, `#contact`):**\n"
-     "    - Use the `design.brand_color` as the primary accent color for headings (`h1`, `h2`, `h3`).\n"
-     "    - Style the simple `#introduction` section and the `#contact` section with `text-align: center;`.\n"
-     "    - Style menu items and other elements as you have been instructed before.\n\n"
-     "Do not wrap your code in ```css markers."),
-    ("user", "{config_json}")
-])
-    
-  
+        ("system",
+         "You are an expert CSS designer. Your task is to write a complete, professional CSS stylesheet based on the provided JSON data. Do not wrap your code in ```css markers.\n\n"
+         "**CRITICAL STYLING INSTRUCTIONS:**\n"
+         "1.  **Brand Color:** You MUST use the value from `design.brand_color` for the main accent color, especially for headings (`h1`, `h2`, `h3`). Use this placeholder in your CSS: `BRAND_COLOR_PLACEHOLDER`.\n"
+         "2.  **Hero Section (`#introduction-hero`):**\n"
+         "    - This section is a banner. Its `background-image` MUST be set using the URL from `content.details.introduction_image_url`.\n"
+         "    - It must have a semi-transparent dark overlay (`.hero-overlay`).\n"
+         "    - Text (`.hero-text`) must be white and centered with a text-shadow for readability.\n"
+         "3.  **Menu Layout:**\n"
+         "    - Style `.menu-grid` with `display: grid;`\n"
+         "    - Style `.menu-list` with `display: flex; flex-direction: column;`"
+        ),
+        ("user", "{config_json}")
+    ])
+
     html_chain = html_writer_prompt | code_llm | StrOutputParser()
     css_chain = css_writer_prompt | code_llm | StrOutputParser()
 
     print("--- Generating HTML body code from scratch... ---")
-    generated_body_html = html_chain.invoke({"config_json": config_json})
-    if generated_body_html.strip().startswith("```html"):
+    generated_body_html_template = html_chain.invoke({"config_json": config_json}).strip()
+    
+    if generated_body_html_template.startswith("```html"):
         print("--- Cleaning HTML markdown fences ---")
-        generated_body_html = generated_body_html.split('\n', 1)[1]
-        generated_body_html = generated_body_html.rsplit('```', 1)[0]
-    
-    print("--- Generating CSS code from scratch... ---")
-    css_code = css_chain.invoke({"config_json": config_json})
-    if css_code.strip().startswith("```css"):
-        print("--- Cleaning CSS markdown fences ---")
-        css_code = css_code.split('\n', 1)[1]
-        css_code = css_code.rsplit('```', 1)[0]
+        generated_body_html_template = "\n".join(generated_body_html_template.split('\n')[1:-1])
+    elif generated_body_html_template.startswith("```"):
+        print("--- Cleaning generic HTML markdown fences ---")
+        generated_body_html_template = "\n".join(generated_body_html_template.split('\n')[1:-1])
 
-    
+
+    print("--- Generating CSS code from scratch... ---")
+    generated_css_template = css_chain.invoke({"config_json": config_json}).strip()
+
+    if generated_css_template.startswith("```css"):
+        print("--- Cleaning CSS markdown fences ---")
+        generated_css_template = "\n".join(generated_css_template.split('\n')[1:-1])
+    elif generated_css_template.startswith("```"):
+        print("--- Cleaning generic CSS markdown fences ---")
+        generated_css_template = "\n".join(generated_css_template.split('\n')[1:-1])
 
     env = Environment(loader=FileSystemLoader('templates/'))
-    body_template = env.from_string(generated_body_html)
+    body_template = env.from_string(generated_body_html_template)
     rendered_body = body_template.render(content=config["data"], design=config["design_prefs"])
 
     
-    allowed_tags = ['div', 'p', 'h1', 'h2', 'h3', 'header', 'main', 'section', 'footer', 'a', 'strong', 'em', 'ul', 'li', 'ol', 'img', 'address', 'br']
-
-    allowed_attrs = {'*': ['class', 'id', 'style'], 'a': ['href', 'title'], 'img': ['src', 'alt']}
-
+    allowed_tags = bleach.ALLOWED_TAGS + ['div', 'p', 'h1', 'h2', 'h3', 'header', 'main', 'section', 'footer', 'a', 'strong', 'em', 'ul', 'li', 'ol', 'img', 'address', 'br']
+    allowed_attrs = {**bleach.ALLOWED_ATTRIBUTES, '*': ['class', 'id', 'style'], 'a': ['href', 'title'], 'img': ['src', 'alt']}
     sanitized_html_body = bleach.clean(rendered_body, tags=allowed_tags, attributes=allowed_attrs)
+
+   
+    brand_color = config["design_prefs"].get("brand_color", "#333") 
+    final_css_code = generated_css_template.replace("BRAND_COLOR_PLACEHOLDER", brand_color)
+    
+
     shell_template = env.get_template('shell.html')
     final_html_content = shell_template.render(
         title=config['data']['details'].get('name', 'My Restaurant'),
         generated_body_html=sanitized_html_body
     )
     
-    return final_html_content, css_code
+    return final_html_content, final_css_code
 
-
-
-llm = GoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"), temperature=0.0)
+llm = GoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"), temperature=0.0, safety_settings={
+                                                                                                                                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                                                                                                                                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                                                                                                                                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                                                                                                                                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                                                                                                                            },)
 
 tools = [
     get_website_build_status, 
@@ -528,81 +496,70 @@ tools = [
 
 
 
-
 react_prompt = PromptTemplate.from_template("""
-You are "Zesty AI Web Designer", a creative assistant that builds unique, professional websites.
+You are "AI Web Designer", an assistant that builds restaurant websites by asking questions.
 
-**CRITICAL FLOW & RULES:**
-1.  **GATHER CONTENT:** Your first goal is to collect the base content. Use `get_website_build_status` to find `missing_items`. Collect `details`, `style`, `menu`, and `contact` information first. Do not ask about design yet.
-    **1a. BE THOROUGH:** When you ask the user for information for a section (like 'details' or a 'menu item'), you MUST ask for all possible fields at once, clearly mentioning which are optional. Do not just ask for the minimum required fields.
-2.  **GATHER STYLE:** After `details`, `menu`, and `contact` are collected, your next step is to ask for the website `style` ('modern', 'rustic', or 'elegant').
-3.  **DESIGN INTERVIEW:** Once `style` is also collected and `design` is the only missing item, you MUST conduct the design interview.
-4.  **SAVE DESIGN:** After the interview, your ONLY action is to use the `save_design_preferences` tool to save their choices.
-5.  **PREVIEW:** When `get_website_build_status` shows `status` is `READY_TO_GENERATE`, your **next and only action** is to use `preview_website`.
-6.  **GET FEEDBACK & UPDATE:** After generating a preview, ask for feedback. If they want changes to content or design, use `update_existing_information` or `save_design_preferences`, then go back to Step 4.
-7.  **FINALIZE:** If the user approves and provides a filename, use `finish_and_generate_website`. If they approve but don't give a filename, ask for one.
-8.  **SHOW HTML LINK:** If you have just used `preview_website` or `finish_and_generate_website`, you MUST format your response as follows, with no extra commentary:
-    Thought: I have just used a tool that generates a link. I must pass the exact text from the Observation to the user in my Final Answer.
-    Final Answer: [The exact, unmodified text from the Observation goes here]
+**WORKFLOW:** You MUST follow this order precisely. Use `get_website_build_status` to know what to do next.
 
-**TOOL USAGE POLICY - VERY IMPORTANT!**
-1.  **FOCUS ON THE LATEST MESSAGE:** When deciding to use a `save_` or `add_` tool, you MUST base your decision **ONLY on the information in the user's most recent message (`{input}`)**. Do not try to re-save information from the `Conversation History`.
-2.  **ONE ACTION AT A TIME:** You MUST only perform a single `Action` per turn. Do not generate an `Action` and a `Final Answer` in the same turn.
-3.  **MENU COLLECTION POLICY:** This is a strict multi-turn process.
-    - **Turn A (Ask):** When asking for a menu item, you MUST explain *why* direct image URLs are important. Say something like: "Please provide a direct link to an image (ending in .jpg, .png, etc.). Links from pages like Google Drive or a standard Unsplash page will not display correctly."
-    - **Turn B (Save):** You MUST accept and save whatever URL the user provides, even if it doesn't look like a direct link. Your ONLY action is to use the `add_menu_item` tool with the provided data.
-    - **Turn C (Confirm):** After the tool succeeds, your `Final Answer` should be to ask for the next item or if they are done.
-                                            
-**ERROR HANDLING POLICY:**
-If a tool call results in an `Observation` that is a JSON object with `status: "error"`, your job is to interpret the `message` field from that JSON. DO NOT simply repeat the error message to the user. Instead, formulate a clear, helpful question that asks for the specific missing or incorrect information.
+**Phase 1: Collect Content**
+- GOAL: Collect `details`, `contact`, and `menu` information.
+- ACTION: Check `missing_items` and ask for the first one on that list. Do NOT ask for style or design yet.
+
+**Phase 2: Collect Style**
+- CONDITION: When `details`, `contact`, and `menu` are complete.
+- ACTION: Ask for the website `style` ('modern', 'rustic', or 'elegant') and save it.
+
+**Phase 3: Design & Preview**
+- CONDITION: When ONLY `design` is missing.
+- ACTION:
+    1. Ask for ALL design preferences at once: `section_order`, `menu_layout`, and `brand_color`.
+    2. Use `save_design_preferences` to save them.
+    3. IMMEDIATELY use `preview_website`. Do not ask for permission.
+
+**Phase 4: Finalize**
+- CONDITION: After a preview is shown.
+- ACTION: Ask for feedback. If approved, ask for a filename and then use `finish_and_generate_website`. If changes are requested, use `update_existing_information` and then generate a new preview.
+
+**--- CRITICAL RULE FOR LINKS ---**
+If a tool's `Observation` contains an HTML `<a>` tag (like a preview or download link), your next `Thought` and `Final Answer` MUST follow this format EXACTLY:
+Thought: The user needs to see the link generated by the tool. I will copy the entire Observation text into my Final Answer without any changes or commentary.
+Final Answer: [THE ENTIRE, UNMODIFIED TEXT FROM THE OBSERVATION, INCLUDING THE FULL `<a>` TAG]
+
 **Example:**
-Observation: {{"status": "error", "type": "MissingKeyError", "message": "I'm missing a required piece of information: 'cuisine'. I need both a 'name' and a 'cuisine'."}}
-Thought: The tool failed because the user only gave a name but not a cuisine. I need to ask for the cuisine.
-Final Answer: Thanks for the name! What type of cuisine does your restaurant serve?
+Observation: I have generated a preview. <a href='/preview/...'>Click here to open it.</a> How does this look?
+Thought: The user needs to see the link generated by the tool. I will copy the entire Observation text into my Final Answer without any changes or commentary.
+Final Answer: I have generated a preview. <a href='/preview/...'>Click here to open it.</a> How does this look?
+**--- END OF CRITICAL RULE ---**
 
-**CAPABILITY POLICY:**
-Your capabilities are strictly limited to the tools provided. You can gather text, save preferences, and generate a website with text and images (if URLs are provided).
-If the user asks for a feature you do not have a tool for, you MUST NOT attempt to invent a solution.
-Examples of unsupported requests:
-- Video embedding
-- Contact forms
-- Online ordering systems
-- Image uploads (you can only accept image URLs)
-- Animations
-If you receive an unsupported request, your ONLY response should be to state that you cannot perform that action and politely list what you *can* do.
-**Example of a correct refusal:**
-Final Answer: I'm sorry, I can't add a contact form to the website. My capabilities are focused on creating a static page with your restaurant's details, menu, contact info, and images. I can, however, change the style, content, or layout if you'd like.
-                                            
+**TOOL USAGE:**
+- Your `Action Input` for tools that take JSON should be a raw JSON object, not a string.
+- If a tool returns an error, explain the error simply to the user and ask for the correct information.
+
 **You have access to the following tools:**
 {tools}
 
 **RESPONSE FORMAT:**
 **To use a tool:**
-Thought: [Your reasoning, explicitly stating that you have all required arguments for the chosen tool based on the user's input.]
+Thought: [Your reasoning, explicitly stating which Phase you are in and why you are choosing this tool.]
 Action: The tool to use, one of [{tool_names}].
-Action Input: A JSON object containing the arguments for the tool. For tools with a Pydantic schema (like `save_restaurant_details`), the JSON object should match the schema's fields.
-
-**EXAMPLE of CORRECT `Action Input` for a tool with a Pydantic schema:**
-Action: save_restaurant_details
-Action Input: {{"name": "The Golden Spoon", "cuisine": "Italian", "tagline": "A taste of Rome."}}
+Action Input: A valid JSON object for the tool's arguments.
 
 **To ask a question:**
-Thought: [Your reasoning, explicitly stating which arguments you are missing for a specific tool, which is why you must ask a question.]
-Final Answer: [The question you will ask the user for the missing information.]
+Thought: [Your reasoning, stating which Phase you are in and what information you are missing.]
+Final Answer: [Your question to the user.]
 
 ---
-**BEGIN!**
+**Begin!**
 
-**Conversation History:**
+Conversation History:
 {chat_history}
 
-**User's Latest Message:**
+User's Latest Message:
 Question: {input}
 
-**Your Response:**
+Your Response:
 {agent_scratchpad}
 """)
-
 agent = create_react_agent(llm, tools, react_prompt)
 
 def _handle_pydantic_error(error: Exception) -> str:
@@ -670,4 +627,4 @@ def preview_file(session_id, filename):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False, port=5000)
+    app.run(debug=True, use_reloader=True, port=5000)

@@ -1,210 +1,228 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Restaurant Website Builder</title>
-    
-    <!-- CSS STYLES ARE EMBEDDED DIRECTLY IN THE HTML FILE -->
-    <style>
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        #chat-container {
-            width: 100%;
-            max-width: 700px;
-            height: 90vh;
-            max-height: 800px;
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        #chat-window {
-            flex-grow: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .message {
-            padding: 12px 18px;
-            border-radius: 20px;
-            max-width: 80%;
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
-        .ai-message {
-            background-color: #e9e9eb;
-            color: #000;
-            align-self: flex-start;
-            border-bottom-left-radius: 5px;
-            white-space: pre-wrap;
-        }
-        .user-message {
-            background-color: #007aff;
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 5px;
-        }
-        .ai-message a {
-            color: #0056b3;
-            font-weight: 600;
-            text-decoration: underline;
-        }
-        .ai-message a:hover {
-            color: #003d7c;
-        }
-        #chat-form {
-            display: flex;
-            padding: 15px;
-            border-top: 1px solid #dcdcdc;
-            background-color: #f9f9f9;
-        }
-        #user-input {
-            flex-grow: 1;
-            border: 1px solid #ccc;
-            border-radius: 20px;
-            padding: 12px 18px;
-            font-size: 16px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        #user-input:focus {
-            border-color: #007aff;
-        }
-        #chat-form button {
-            background-color: #007aff;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            margin-left: 10px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: background-color 0.2s;
-        }
-        #chat-form button:hover {
-            background-color: #0056b3;
-        }
-        .typing-indicator {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .typing-indicator span {
-            width: 8px;
-            height: 8px;
-            background-color: #999;
-            border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out both;
-        }
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1.0); }
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Restaurant Website Builder</title>
+<style>
+    body {
+        margin: 0;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: linear-gradient(135deg, #f0f4f8, #e6ecf3);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+
+    #chat-container {
+        width: 100%;
+        max-width: 720px;
+        height: 90vh;
+        max-height: 820px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    #chat-window {
+        flex-grow: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        scrollbar-width: thin;
+        scrollbar-color: #c5c5c5 transparent;
+    }
+    #chat-window::-webkit-scrollbar {
+        width: 6px;
+    }
+    #chat-window::-webkit-scrollbar-thumb {
+        background: #c5c5c5;
+        border-radius: 3px;
+    }
+
+    .message {
+        padding: 12px 18px;
+        border-radius: 18px;
+        max-width: 80%;
+        line-height: 1.5;
+        word-wrap: break-word;
+        font-size: 15px;
+        animation: slideUp 0.3s ease-out;
+    }
+    .ai-message {
+        background-color: #f3f4f6;
+        color: #111;
+        align-self: flex-start;
+        border-bottom-left-radius: 6px;
+        white-space: pre-wrap;
+    }
+    .user-message {
+        background-color: #007aff;
+        color: #fff;
+        align-self: flex-end;
+        border-bottom-right-radius: 6px;
+    }
+    .ai-message a {
+        color: #0056b3;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+    .ai-message a:hover {
+        color: #003d7c;
+    }
+
+    #chat-form {
+        display: flex;
+        padding: 15px;
+        border-top: 1px solid #e5e7eb;
+        background-color: #f9fafb;
+    }
+    #user-input {
+        flex-grow: 1;
+        border: 1px solid #d1d5db;
+        border-radius: 24px;
+        padding: 12px 18px;
+        font-size: 15px;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #user-input:focus {
+        border-color: #007aff;
+        box-shadow: 0 0 0 3px rgba(0,122,255,0.2);
+    }
+    #chat-form button {
+        background-color: #007aff;
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        margin-left: 10px;
+        border-radius: 24px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        transition: background-color 0.25s, transform 0.15s;
+    }
+    #chat-form button:hover {
+        background-color: #0056b3;
+    }
+    #chat-form button:active {
+        transform: scale(0.96);
+    }
+
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background-color: #999;
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out both;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.98); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes slideUp {
+        from { transform: translateY(8px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+</style>
 </head>
 <body>
 
-    <div id="chat-container">
-        <div id="chat-window">
-            <div class="message ai-message">
-                Hello! I can help you build a simple website for your restaurant. Say "start" or "hello" to begin.
-            </div>
+<div id="chat-container">
+    <div id="chat-window">
+        <div class="message ai-message">
+            Hello! I can help you build a simple website for your restaurant. Say "start" or "hello" to begin.
         </div>
-        <form id="chat-form">
-            <input 
-                type="text" 
-                id="user-input" 
-                placeholder="Type your message here..." 
-                autocomplete="off" 
-                required
-            >
-            <button type="submit">Send</button>
-        </form>
     </div>
+    <form id="chat-form">
+        <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off" required />
+        <button type="submit">Send</button>
+    </form>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const chatWindow = document.getElementById('chat-window');
-            const chatForm = document.getElementById('chat-form');
-            const userInput = document.getElementById('user-input');
-            // The `backendURL` constant has been removed as it's no longer needed.
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatWindow = document.getElementById('chat-window');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
 
-            chatForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-                const messageText = userInput.value.trim();
-                if (messageText) {
-                    addMessage(messageText, 'user');
-                    sendMessageToAI(messageText);
-                    userInput.value = '';
-                    userInput.focus();
-                }
+    chatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const messageText = userInput.value.trim();
+        if (messageText) {
+            addMessage(messageText, 'user');
+            sendMessageToAI(messageText);
+            userInput.value = '';
+            userInput.focus();
+        }
+    });
+
+    function addMessage(text, sender) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', `${sender}-message`);
+        messageElement.innerHTML = text; 
+        chatWindow.appendChild(messageElement);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', 'ai-message', 'typing-indicator');
+        messageElement.innerHTML = `<span></span><span></span><span></span>`;
+        chatWindow.appendChild(messageElement);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const indicator = chatWindow.querySelector('.typing-indicator');
+        if (indicator) {
+            chatWindow.removeChild(indicator);
+        }
+    }
+
+    async function sendMessageToAI(message) {
+        showTypingIndicator();
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message }),
+                credentials: 'include'
             });
 
-            function addMessage(text, sender) {
-                const messageElement = document.createElement('div');
-                messageElement.classList.add('message', `${sender}-message`);
-                messageElement.innerHTML = text; 
-                chatWindow.appendChild(messageElement);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            }
-
-            function showTypingIndicator() {
-                const messageElement = document.createElement('div');
-                messageElement.classList.add('message', 'ai-message', 'typing-indicator');
-                messageElement.innerHTML = `<span></span><span></span><span></span>`;
-                chatWindow.appendChild(messageElement);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            }
-
-            function removeTypingIndicator() {
-                const indicator = chatWindow.querySelector('.typing-indicator');
-                if (indicator) {
-                    chatWindow.removeChild(indicator);
-                }
-            }
-
-            async function sendMessageToAI(message) {
-                showTypingIndicator();
-                try {
-                    // *** THIS IS THE FIX ***
-                    // Use a relative URL ('/chat'). The browser will automatically send the request
-                    // to the same origin the page was loaded from, ensuring cookies are sent correctly.
-                    const response = await fetch('/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: message }),
-                        credentials: 'include'
-                    });
-
-                    if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-                    const data = await response.json();
-                    removeTypingIndicator();
-                    addMessage(data.reply, 'ai');
-                } catch (error) {
-                    removeTypingIndicator();
-                    console.error('Error communicating with AI:', error);
-                    addMessage('Sorry, I seem to be having trouble connecting. Please try again.', 'ai');
-                }
-            }
-        });
-    </script>
+            if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+            const data = await response.json();
+            removeTypingIndicator();
+            addMessage(data.reply, 'ai');
+        } catch (error) {
+            removeTypingIndicator();
+            console.error('Error communicating with AI:', error);
+            addMessage('Sorry, I seem to be having trouble connecting. Please try again.', 'ai');
+        }
+    }
+});
+</script>
 
 </body>
 </html>
